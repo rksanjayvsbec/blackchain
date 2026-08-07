@@ -53,3 +53,61 @@ class LogParser:
 
     def parse_zeek_json(self, json_str: str) -> LogEntry:
         try:
+            data = json.loads(json_str)
+            return LogEntry(
+                id=data.get("uid", "zeek_001"),
+                timestamp=data.get("ts", "2026-08-07 13:00:00"),
+                source_ip=data.get("id.orig_h", "192.168.1.15"),
+                destination_ip=data.get("id.resp_h", "10.0.0.2"),
+                source_port=data.get("id.orig_p", 51234),
+                destination_port=data.get("id.resp_p", 22),
+                protocol=data.get("proto", "TCP"),
+                log_type="Zeek",
+                action="ALLOW",
+                payload_size=data.get("orig_bytes", 0) + data.get("resp_bytes", 0),
+                domain=data.get("query", None),
+                raw_text=json_str
+            )
+        except Exception:
+            return self.parse_syslog(json_str)
+
+    def parse_windows_event(self, event_dict: Dict[str, Any]) -> LogEntry:
+        # Event ID 4625 = Failed Logon
+        event_id = event_dict.get("EventID", 4625)
+        action = "FAILED_LOGIN" if event_id == 4625 else "ALLOW"
+        
+        return LogEntry(
+            id=f"win_{event_dict.get('RecordNumber', 1000)}",
+            timestamp=event_dict.get("TimeCreated", "2026-08-07 13:00:00"),
+            source_ip=event_dict.get("WorkstationIP", "185.220.101.5"),
+            destination_ip=event_dict.get("TargetServerIP", "10.0.0.5"),
+            source_port=49152,
+            destination_port=445,
+            protocol="SMB/NTLM",
+            log_type="WindowsEvent",
+            action=action,
+            payload_size=512,
+            event_id=event_id,
+            raw_text=f"EventID {event_id}: Account Logon Failed for user {event_dict.get('TargetUserName', 'Admin')}"
+        )
+
+    def extract_features(self, logs: List[LogEntry]) -> PacketFeature:
+        if not logs:
+            return PacketFeature(0, 0, 0, 0, 0, 0.0, 0.0, False)
+            
+        total_bytes = sum(l.payload_size for l in logs)
+        failed_logins = sum(1 for l in logs if l.action == "FAILED_LOGIN" or "failed" in l.raw_text.lower())
+        dns_anomalies = sum(1 for l in logs if l.domain and ("xyz" in l.domain or "c2" in l.domain or "bit" in l.domain or len(l.domain) > 30))
+        dst_ports = len(set(l.destination_port for l in logs))
+        has_malicious = any(l.source_ip in self.malicious_ips or l.destination_ip in self.malicious_ips for l in logs)
+        
+        return PacketFeature(
+            packet_rate=len(logs) / 10.0,
+            byte_rate=total_bytes / 10.0,
+            failed_logins=failed_logins,
+            dns_anomalies=dns_anomalies,
+            distinct_dst_ports=dst_ports,
+            payload_entropy=4.8 if has_malicious else 2.1,
+            connection_duration=120.0,
+            is_known_malicious_ip=has_malicious
+        )
