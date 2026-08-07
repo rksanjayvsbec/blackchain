@@ -43,3 +43,57 @@ class ThreatAlert:
     device_name: str
     device_ip: str
     attack_category: str  # DDoS, Malware, SSH Brute Force, Port Scan, Data Exfiltration, Suspicious DNS
+    confidence_score: float  # 0.0 to 1.0
+    risk_score: float        # 0.0 to 100.0
+    severity: str            # Critical, High, Medium, Low
+    mitre_technique_id: str  # e.g., T1110
+    mitre_technique_name: str # e.g., Brute Force
+    xai_reasons: List[str]
+    raw_logs: List[str]
+    geo_country: str = "Unknown"
+    malware_family: str = "N/A"
+    is_mitigated: bool = False
+    mitigation_action: str = ""
+
+@dataclass
+class DeviceRiskProfile:
+    device_id: str
+    name: str
+    ip_address: str
+    device_type: str  # Router, Firewall, Server, Workstation, IoT
+    current_risk_score: float  # 0 to 100%
+    predicted_risk_24h: float  # 0 to 100%
+    threat_status: str         # Safe, Suspicious, Compromised
+    active_threats: int
+    last_updated: str
+    factors: List[str] = field(default_factory=list)
+
+@dataclass
+class AttackGraphNode:
+    id: str
+    label: str
+    type: str  # Internet, Firewall, Server, Database, Workstation
+    ip: str
+    status: str # Safe, Suspicious, Compromised
+    risk_score: float
+
+@dataclass
+class AttackGraphEdge:
+    source: str
+    target: str
+    protocol: str
+    status: str # Normal, Anomaly, AttackPath
+
+@dataclass
+class IncidentReport:
+    report_id: str
+    generated_at: str
+    target_device: str
+    risk_score: float
+    confidence_score: float
+    executive_summary: str
+    timeline: List[Dict[str, Any]]
+    xai_evidence: List[str]
+    mitre_mappings: List[Dict[str, str]]
+    recommended_actions: List[str]
+    soar_actions_taken: List[str]
