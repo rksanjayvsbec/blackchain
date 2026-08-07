@@ -43,3 +43,49 @@ class ThreatIntelligenceEngine:
             },
             "T1046": {
                 "name": "Network Service Discovery",
+                "tactic": "Discovery",
+                "description": "Adversaries may attempt to get a listing of services running on remote hosts (Port Scanning).",
+                "mitigations": ["Disable Unnecessary Listening Services", "Configure Network Micro-segmentation", "Alert on Port Scan Velocity"]
+            },
+            "T1071.004": {
+                "name": "DNS Tunneling",
+                "tactic": "Command and Control",
+                "description": "Adversaries may communicate using DNS queries to hide data in TXT/AAAA records.",
+                "mitigations": ["Enforce DNS Sinkholing", "Monitor High Entropy Subdomains", "Use Secure DNS (DoH/DoT) Gateway"]
+            }
+        }
+
+    def lookup_ip(self, ip_address: str) -> Dict[str, Any]:
+        if ip_address in self.known_malicious_ips:
+            info = self.known_malicious_ips[ip_address]
+            mitre_info = self.mitre_db.get(info["mitre_id"], {})
+            return {
+                "ip": ip_address,
+                "is_malicious": True,
+                "country": info["country"],
+                "threat": info["threat"],
+                "cve": info["cve"],
+                "mitre_id": info["mitre_id"],
+                "mitre_name": mitre_info.get("name", "Unknown"),
+                "mitre_tactic": mitre_info.get("tactic", "Unknown"),
+                "mitigations": mitre_info.get("mitigations", [])
+            }
+        return {
+            "ip": ip_address,
+            "is_malicious": False,
+            "country": "Local / Internal",
+            "threat": "Clean",
+            "cve": "N/A",
+            "mitre_id": "N/A",
+            "mitre_name": "N/A",
+            "mitre_tactic": "N/A",
+            "mitigations": []
+        }
+
+    def get_mitre_mapping(self, technique_id: str) -> Dict[str, Any]:
+        return self.mitre_db.get(technique_id, {
+            "name": "General Anomaly",
+            "tactic": "Defense Evasion",
+            "description": "Behavior deviates significantly from baseline profile.",
+            "mitigations": ["Isolate Device", "Investigate Process Tree", "Review Audit Logs"]
+        })
