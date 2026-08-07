@@ -1,0 +1,22 @@
+{
+  "dataset_name": "CIC-IDS2017",
+  "total_records": 2830743,
+  "features": ["Flow Duration", "Total Fwd Packets", "Total Backward Packets", "Flow Bytes/s", "Flow Packets/s", "Fwd Packet Length Max", "Bwd Packet Length Max", "SYN Flag Count", "ACK Flag Count", "Init_Win_bytes_forward"],
+  "attack_distribution": {
+    "BENIGN": 2273097,
+    "DoS Hulk": 231073,
+    "PortScan": 158930,
+    "DDoS": 128027,
+    "FTP-Patator": 7938,
+    "SSH-Patator": 5897,
+    "Bot": 1966,
+    "Web Attack - Brute Force": 1507
+  },
+  "benchmark_metrics": {
+    "random_forest_accuracy": 0.9982,
+    "precision": 0.9975,
+    "recall": 0.9980,
+    "f1_score": 0.9977,
+    "roc_auc": 0.9994
+  }
+}
