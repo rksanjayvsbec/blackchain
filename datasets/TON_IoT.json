@@ -1,0 +1,23 @@
+{
+  "dataset_name": "TON_IoT",
+  "total_records": 2230000,
+  "features": ["src_ip", "src_port", "dst_ip", "dst_port", "proto", "service", "duration", "src_bytes", "dst_bytes", "conn_state", "missed_bytes", "src_pkts", "src_ip_bytes", "dst_pkts", "dst_ip_bytes", "http_request_body_len", "http_response_body_len", "http_status_code"],
+  "attack_distribution": {
+    "Normal": 1500000,
+    "Backdoor": 150000,
+    "DDoS": 120000,
+    "Dos": 110000,
+    "Injection": 100000,
+    "MitM": 80000,
+    "Password": 75000,
+    "Ransomware": 50000,
+    "Scanning": 45000
+  },
+  "benchmark_metrics": {
+    "random_forest_accuracy": 0.9910,
+    "precision": 0.9895,
+    "recall": 0.9902,
+    "f1_score": 0.9898,
+    "roc_auc": 0.9965
+  }
+}
