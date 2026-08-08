@@ -1,0 +1,9 @@
+{
+  "model_type": "IsolationForest",
+  "version": "1.8.0",
+  "contamination": 0.02,
+  "n_estimators": 150,
+  "max_samples": "auto",
+  "features_evaluated": ["packet_rate", "byte_rate", "payload_entropy", "connection_duration"],
+  "anomaly_threshold": -0.65
+}
