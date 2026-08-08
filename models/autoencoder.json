@@ -1,0 +1,13 @@
+{
+  "model_type": "DeepAutoencoder",
+  "framework": "TensorFlow/Keras",
+  "architecture": [
+    {"layer": "Input", "units": 16},
+    {"layer": "Dense (Encoder)", "units": 8, "activation": "relu"},
+    {"layer": "Dense (Bottleneck)", "units": 4, "activation": "relu"},
+    {"layer": "Dense (Decoder)", "units": 8, "activation": "relu"},
+    {"layer": "Output (Reconstruction)", "units": 16, "activation": "linear"}
+  ],
+  "loss_function": "MSE",
+  "reconstruction_error_threshold": 0.045
+}
