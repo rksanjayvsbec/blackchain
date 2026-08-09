@@ -118,3 +118,108 @@ def background_sweeper():
     while True:
         update_discovered_hosts()
         time.sleep(15)
+
+_WIFI_SSID_CACHE = {"ssid": "VSBEC Hotspot", "expires": 0}
+_GATEWAY_IP_CACHE = {"gw": None, "expires": 0}
+
+def get_wifi_ssid():
+    now = time.time()
+    if now < _WIFI_SSID_CACHE["expires"]:
+        return _WIFI_SSID_CACHE["ssid"]
+        
+    ssid = "VSBEC Hotspot"
+    for iface in ['en0', 'en1', 'en2', 'en3']:
+        try:
+            out = subprocess.check_output(['ipconfig', 'getsummary', iface], stderr=subprocess.DEVNULL).decode('utf-8')
+            match = re.search(r'^\s*SSID\s*:\s*(.+)$', out, re.M)
+            if match:
+                val = match.group(1).strip()
+                if val and val != "<redacted>":
+                    ssid = val
+                    break
+        except Exception:
+            pass
+            
+    _WIFI_SSID_CACHE["ssid"] = ssid
+    _WIFI_SSID_CACHE["expires"] = now + 10.0
+    return ssid
+
+def is_host_alive(ip):
+    if ip == "Localhost (You)" or ip.endswith('.1'):
+        return True
+    try:
+        res = subprocess.run(
+            ['ping', '-c', '1', '-W', '1000', ip],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return res.returncode == 0
+    except Exception:
+        return True
+
+last_telemetry_time = time.time()
+last_total_bytes = 0
+
+def get_real_throughput():
+    global last_telemetry_time, last_total_bytes
+    current_time = time.time()
+    elapsed = current_time - last_telemetry_time
+    if elapsed <= 0:
+        elapsed = 1.0
+        
+    try:
+        out = subprocess.check_output(['netstat', '-ib']).decode('utf-8')
+        total_bytes = 0
+        for line in out.split('\n')[1:]:
+            parts = line.split()
+            if len(parts) >= 10 and not parts[0].startswith('lo'):
+                try:
+                    total_bytes += int(parts[6]) + int(parts[9])
+                except ValueError:
+                    pass
+    except Exception:
+        total_bytes = last_total_bytes
+
+    if last_total_bytes == 0:
+        bytes_diff = 0
+    else:
+        bytes_diff = max(0, total_bytes - last_total_bytes)
+        
+    last_telemetry_time = current_time
+    last_total_bytes = total_bytes
+    
+    kbs = round(bytes_diff / (1024 * elapsed), 1)
+    mbps = round((bytes_diff * 8) / (1024 * 1024 * elapsed), 2)
+    return {
+        "throughput_kbps": kbs,
+        "throughput_mbps": mbps,
+        "raw_bytes_sec": round(bytes_diff / elapsed, 0)
+    }
+
+def get_gateway_ip():
+    now = time.time()
+    if now < _GATEWAY_IP_CACHE["expires"]:
+        return _GATEWAY_IP_CACHE["gw"]
+        
+    gw = None
+    for iface in ['en0', 'en1', 'en2', 'en3']:
+        try:
+            out = subprocess.check_output(['ipconfig', 'getpacket', iface], stderr=subprocess.DEVNULL).decode('utf-8')
+            match = re.search(r'router\s*\(ip_mult\)\s*:\s*\{([^}]+)\}', out)
+            if match:
+                val = match.group(1).strip()
+                if val and val != "0.0.0.0":
+                    gw = val
+                    break
+        except Exception:
+            pass
+            
+    _GATEWAY_IP_CACHE["gw"] = gw
+    _GATEWAY_IP_CACHE["expires"] = now + 10.0
+    return gw
+
+class NetworkAPIHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=WEB_DIR, **kwargs)
+
+    def do_GET(self):
