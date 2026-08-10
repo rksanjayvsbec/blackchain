@@ -218,3 +218,113 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.35rem;
+}
+
+/* Attack Graph Canvas Container */
+.graph-container {
+  height: 340px;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.8) 0%, rgba(8, 11, 17, 0.95) 100%);
+  border-radius: 8px;
+}
+
+#attackGraphSvg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Node Badge Colors */
+.node-safe { fill: #10b981; stroke: #059669; }
+.node-suspicious { fill: #f59e0b; stroke: #d97706; }
+.node-compromised { fill: #ef4444; stroke: #dc2626; filter: drop-shadow(0px 0px 8px #ef4444); }
+
+/* Asset Risk Scoreboard */
+.asset-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.asset-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.asset-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(45, 62, 98, 0.2);
+  font-size: 0.85rem;
+}
+
+.risk-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Alert Stream Timeline */
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.timeline-item {
+  padding: 1rem;
+  border-left: 4px solid var(--accent-rose);
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 0 8px 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.timeline-item:hover {
+  transform: translateX(4px);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* XAI Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  overflow-y: auto;
