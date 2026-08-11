@@ -618,3 +618,133 @@ class NetShieldApp {
       `;
     }).join('');
   }
+
+  async renderActiveSockets() {
+    const tbody = document.getElementById('socketTableBody');
+    const badge = document.getElementById('socketMonitoredBadge');
+    if (!tbody) return;
+
+    try {
+      const res = await fetch('/api/active-sockets');
+      if (!res.ok) return;
+      const data = await res.json();
+      const sockets = data.sockets || [];
+
+      if (badge) {
+        badge.textContent = `${data.total_monitored || sockets.length} Active Sockets Monitored`;
+      }
+
+      if (sockets.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:1rem; text-align:center; color:#9ca3af;">No active socket connections found</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = sockets.map(s => {
+        const isTcp = s.protocol === 'TCP';
+        const isBlocked = s.is_blocked || s.state.includes('BLOCKED');
+        const isListen = s.state.includes('LISTEN');
+        
+        let stateStyle = 'color:#10b981; font-weight:bold;';
+        if (isBlocked) stateStyle = 'color:#ef4444; font-weight:bold;';
+        else if (isListen) stateStyle = 'color:#00f2fe;';
+
+        return `
+          <tr>
+            <td><span style="color:${isTcp ? '#00f2fe' : '#a855f7'}; font-weight:bold;">${s.protocol}</span></td>
+            <td><code style="color:#e2e8f0; font-family:var(--font-mono);">${s.local}</code></td>
+            <td><code style="color:${isBlocked ? '#ef4444' : '#00f2fe'}; font-family:var(--font-mono);">${s.remote}</code></td>
+            <td><span style="${stateStyle}">${s.state}</span></td>
+            <td><code style="color:#9ca3af; font-family:var(--font-mono);">${s.process}</code></td>
+            <td>
+              <button onclick="window.NetShieldApp.executeSOARAction('Kill Process', '${s.pid}')" style="background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:bold; cursor:pointer;" onmouseover="this.style.background='#ef4444'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#ef4444';">
+                Kill PID ${s.pid}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="padding:1rem; text-align:center; color:#ef4444;">Error loading live sockets</td></tr>`;
+    }
+  }
+
+  renderAlertTimeline() {
+    const container = document.getElementById('alertTimelineContainer');
+    if (!container) return;
+
+    if (this.activeAlerts.length === 0) {
+      container.innerHTML = `
+        <div class="timeline-item" style="border-left-color:#10b981; background:rgba(16,185,129,0.1);">
+          <div>
+            <div style="font-size:0.75rem; color:#10b981; font-weight:bold;">✔ ALL THREATS CONTAINED</div>
+            <div style="font-size:0.95rem; font-weight:bold; color:#fff;">No Active Attack Vectors</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.activeAlerts.map(a => `
+      <div class="timeline-item" onclick="window.NetShieldApp.openXAIModalForAlert('${a.id}')">
+        <div>
+          <div style="font-size:0.75rem; color:#ef4444; font-weight:bold;">🚨 ${a.severity.toUpperCase()} ALERT • MITRE ${a.mitre_technique_id}</div>
+          <div style="font-size:1rem; font-weight:bold; margin:0.2rem 0; color:#fff;">${a.attack_category} on ${a.device_name}</div>
+          <div style="font-size:0.8rem; color:#9ca3af;">Origin IP: <code>185.220.101.5</code> (Russia - LockBit C2)</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.2rem; font-weight:800; color:#ef4444; font-family:var(--font-mono);">${a.risk_score}%</div>
+          <div style="font-size:0.75rem; color:#00f2fe;">Inspect XAI ➔</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  openXAIModalForDeviceName(name) {
+    const dev = this.devices.find(x => x.name.toLowerCase() === name.toLowerCase()) || this.devices[1];
+    const alert = this.activeAlerts.find(a => a.device_name.toLowerCase() === dev.name.toLowerCase());
+    this.xaiModal.open(dev, alert);
+  }
+
+  openXAIModalForDevice(deviceData) {
+    const devIp = deviceData.ip || deviceData.ip_address;
+    const fullDev = this.devices.find(x => (x.ip_address || x.ip) === devIp || x.id === deviceData.id) || deviceData;
+    const alert = this.activeAlerts.find(a => a.device_ip === devIp || a.device_name === fullDev.name);
+    this.xaiModal.open(fullDev, alert);
+  }
+
+  openXAIModalForAlert(alertId) {
+    const alert = this.activeAlerts.find(a => a.id === alertId) || this.activeAlerts[0];
+    const dev = this.devices.find(x => x.name.toLowerCase() === alert.device_name.toLowerCase()) || this.devices[1];
+    this.xaiModal.open(dev, alert);
+  }
+
+  renameDevice(ip, currentName) {
+    const newName = prompt(`Enter custom label for device (${ip}):`, currentName || "My Phone / Laptop");
+    if (newName && newName.trim()) {
+      const customNames = JSON.parse(localStorage.getItem('custom_device_names') || '{}');
+      customNames[ip] = newName.trim();
+      localStorage.setItem('custom_device_names', JSON.stringify(customNames));
+      this.fetchConnectedDevices();
+    }
+  }
+
+  generateReport(deviceName, deviceIp) {
+    this.soar.downloadIncidentReport(deviceName, deviceIp);
+  }
+
+  async evaluateDataset(datasetName) {
+    const modal = document.getElementById('datasetEvalModal');
+    const content = document.getElementById('evalModalContent');
+    if (!modal || !content) return;
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    content.innerHTML = `
+      <div style="text-align:center; padding:2rem; color:#00f2fe;">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; margin-bottom:1rem;"></i>
+        <div>Fetching ${datasetName} Benchmark & Running Real-Time Inference...</div>
+      </div>
+    `;
+
+    try {
+      const res = await fetch(`/api/evaluate-dataset?name=${encodeURIComponent(datasetName)}`);
