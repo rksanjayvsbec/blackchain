@@ -148,3 +148,159 @@ class AttackGraphRenderer {
 
     this.render();
   }
+
+  disconnectUnwantedConnection() {
+    const attackEdgeElements = this.svg.querySelectorAll('.edge-attack');
+    attackEdgeElements.forEach(el => {
+      el.style.transition = "opacity 0.4s ease-out, stroke-width 0.4s ease-out";
+      el.style.opacity = "0";
+    });
+
+    setTimeout(() => {
+      this.edges = this.edges.filter(e => e.status !== "AttackPath");
+      this.render();
+    }, 450);
+  }
+
+  render() {
+    if (!this.svg) return;
+    this.svg.innerHTML = '';
+
+    // Define SVG Filters & Markers
+    this.svg.innerHTML += `
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#00f2fe" />
+        </marker>
+        <marker id="arrow-red" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+        </marker>
+        <filter id="glow-red">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="glow-orange">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="glow-gray">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+    `;
+
+    // Render Edges
+    this.edges.forEach(edge => {
+      const src = this.nodes.find(n => n.id === edge.source);
+      const tgt = this.nodes.find(n => n.id === edge.target);
+      if (!src || !tgt) return;
+
+      const isAttack = edge.status === "AttackPath";
+      const isIsolated = edge.status === "Isolated";
+      let strokeColor = "rgba(79, 172, 254, 0.4)";
+      if (isAttack) strokeColor = "#ef4444";
+      else if (isIsolated) strokeColor = "rgba(100, 116, 139, 0.5)";
+
+      const markerId = isAttack ? "arrow-red" : "arrow";
+      const strokeDash = isAttack ? "5,5" : (isIsolated ? "3,3" : "none");
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", src.x);
+      line.setAttribute("y1", src.y);
+      line.setAttribute("x2", tgt.x);
+      line.setAttribute("y2", tgt.y);
+      line.setAttribute("stroke", strokeColor);
+      line.setAttribute("stroke-width", isAttack ? "2.5" : "1.5");
+      line.setAttribute("stroke-dasharray", strokeDash);
+      line.setAttribute("class", isAttack ? "edge-attack" : "edge-normal");
+      line.setAttribute("marker-end", `url(#${markerId})`);
+
+      if (isAttack) {
+        line.innerHTML = `<animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" />`;
+      }
+
+      this.svg.appendChild(line);
+    });
+
+    // Render Nodes
+    this.nodes.forEach(node => {
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("transform", `translate(${node.x}, ${node.y})`);
+      g.setAttribute("style", "cursor: grab;");
+      
+      // Node click for XAI modal, but handle drag as well
+      let isDragging = false;
+      
+      g.onmousedown = (e) => {
+        e.stopPropagation();
+        this.draggedNode = node;
+        isDragging = false;
+      };
+      
+      g.onmousemove = () => {
+        if (this.draggedNode) isDragging = true;
+      };
+
+      g.onclick = (e) => {
+        e.stopPropagation();
+        if (!isDragging && window.NetShieldApp) {
+          window.NetShieldApp.openXAIModalForDevice(node);
+        }
+      };
+
+      let fill = "#10b981";
+      let stroke = "#059669";
+      let glowClass = "";
+
+      if (node.status === "Isolated") {
+        fill = "#64748b";
+        stroke = "#475569";
+        glowClass = "filter: url(#glow-gray);";
+      } else if (node.status === "Compromised") {
+        fill = "#ef4444";
+        stroke = "#dc2626";
+        glowClass = "filter: url(#glow-red);";
+      } else if (node.status === "Contained") {
+        fill = "#f59e0b";
+        stroke = "#d97706";
+        glowClass = "filter: url(#glow-orange);";
+      } else if (node.status === "Suspicious") {
+        fill = "#f59e0b";
+        stroke = "#d97706";
+      }
+
+      const riskLabel = `${node.risk}%`;
+      const statusLabel = node.status === "Isolated" ? "⚪ Isolated" : node.status;
+      
+      // We will show the Name/Type as the primary label, and the IP address below it
+      let primaryName = node.name || node.type || "Connected Device";
+      if (node.id === 'my_laptop') primaryName = "My System";
+      else if (primaryName.startsWith('Device (')) primaryName = "Connected Device";
+
+      const ipLabel = node.ip;
+
+      g.innerHTML = `
+        <circle r="22" fill="${fill}" stroke="${stroke}" stroke-width="3" style="${glowClass}" />
+        <circle r="14" fill="#0f172a" />
+        <text y="4" text-anchor="middle" fill="${node.status === 'Isolated' ? '#94a3b8' : '#fff'}" font-size="10px" font-weight="bold">${riskLabel}</text>
+        <text y="36" text-anchor="middle" fill="#f3f4f6" font-size="11px" font-weight="600">${primaryName}</text>
+        <text y="48" text-anchor="middle" fill="#94a3b8" font-size="9px" font-family="monospace">${ipLabel}</text>
+        <text y="58" text-anchor="middle" fill="${node.status === 'Isolated' ? '#64748b' : '#9ca3af'}" font-size="9px" font-weight="${node.status === 'Isolated' ? 'bold' : 'normal'}">${statusLabel}</text>
+      `;
+
+      this.svg.appendChild(g);
+    });
+  }
+}
+
+window.AttackGraphRenderer = AttackGraphRenderer;
