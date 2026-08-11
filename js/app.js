@@ -148,3 +148,153 @@ class NetShieldApp {
     }).join('');
   }
 
+  async unblockDevice(ip) {
+    try {
+      await fetch('/api/unblock-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: ip })
+      });
+    } catch(e) {
+      console.error("Failed to execute system unblock", e);
+    }
+
+    // Remove from localStorage
+    let blockedIPs = JSON.parse(localStorage.getItem('blocked_ips') || '[]');
+    blockedIPs = blockedIPs.filter(x => x !== ip);
+    localStorage.setItem('blocked_ips', JSON.stringify(blockedIPs));
+
+    // Reset status in local memory if present
+    const dev = this.devices.find(d => d.ip_address === ip);
+    if (dev) {
+      dev.status = "Safe";
+      dev.current_risk_score = 5;
+      dev.predicted_risk_24h = 10;
+    }
+
+    // Show toast notification
+    if (this.soar) {
+      this.soar.showNotification(`Device ${ip} unblocked and re-enabled on network!`, "success");
+    }
+
+    // Give OS ARP flush & ping re-discovery 1000ms to complete before fetching
+    setTimeout(() => {
+      this.fetchConnectedDevices();
+    }, 1000);
+  }
+
+  async clearBlockedHistory() {
+    const blockedIPs = JSON.parse(localStorage.getItem('blocked_ips') || '[]');
+    for (const ip of blockedIPs) {
+      try {
+        await fetch('/api/unblock-ip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip: ip })
+        });
+      } catch(e) {}
+    }
+    localStorage.removeItem('blocked_ips');
+    if (this.soar) {
+      this.soar.showNotification("Cleared all blocked device history!", "success");
+    }
+    setTimeout(() => {
+      this.fetchConnectedDevices();
+    }, 1000);
+  }
+
+  updateHUDMetrics() {
+    // 1. Calculate Active Threats from real devices
+    const activeThreats = this.devices.filter(d => d.status === 'Suspicious' || d.status === 'Compromised').length;
+    
+    // 2. System Threat Status
+    const statusElem = document.getElementById('hudThreatStatus');
+    const iconElem = document.getElementById('hudThreatIcon');
+    if (statusElem) {
+      if (activeThreats > 0) {
+        statusElem.innerText = "CRITICAL";
+        statusElem.style.color = "#ef4444";
+        if (iconElem) {
+          iconElem.style.background = "rgba(239, 68, 68, 0.15)";
+          iconElem.style.color = "#ef4444";
+          iconElem.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        }
+      } else {
+        statusElem.innerText = "HEALTHY";
+        statusElem.style.color = "#10b981";
+        if (iconElem) {
+          iconElem.style.background = "rgba(16, 185, 129, 0.15)";
+          iconElem.style.color = "#10b981";
+          iconElem.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
+        }
+      }
+    }
+
+    // 3. Top High-Risk Asset
+    const topRiskElem = document.getElementById('hudTopRiskAsset');
+    if (topRiskElem) {
+      if (this.devices.length > 0) {
+        const sorted = [...this.devices].sort((a, b) => b.current_risk_score - a.current_risk_score);
+        const topDev = sorted[0];
+        if (topDev && topDev.current_risk_score > 20) {
+          topRiskElem.innerText = topDev.name || topDev.ip_address;
+          topRiskElem.style.color = topDev.current_risk_score > 70 ? "#ef4444" : "#f59e0b";
+        } else {
+          topRiskElem.innerText = "None (All Safe)";
+          topRiskElem.style.color = "#10b981";
+        }
+      } else {
+        topRiskElem.innerText = "None (All Safe)";
+        topRiskElem.style.color = "#10b981";
+      }
+    }
+
+    // 4. Active Threat Alerts Count
+    const alertCountElem = document.getElementById('hudAlertCount');
+    if (alertCountElem) {
+      alertCountElem.innerText = activeThreats;
+      alertCountElem.style.color = activeThreats > 0 ? "#ef4444" : "#10b981";
+    }
+
+    // 5. Total Connected Devices HUD & Header Badges
+    const devCount = this.devices ? this.devices.length : 0;
+    const hudDevicesElem = document.getElementById('hudConnectedDevices');
+    if (hudDevicesElem) {
+      hudDevicesElem.innerText = `${devCount} Connected`;
+    }
+    const topBadgeElem = document.getElementById('topologyDeviceCountBadge');
+    if (topBadgeElem) {
+      topBadgeElem.innerText = `${devCount} Devices Online`;
+    }
+    const scoreBadgeElem = document.getElementById('scoreboardDeviceCountBadge');
+    if (scoreBadgeElem) {
+      scoreBadgeElem.innerText = `${devCount} Assets Monitored`;
+    }
+  }
+
+  initEventListeners() {
+    const buttons = document.querySelectorAll('.scenario-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        buttons.forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        this.currentScenario = e.target.dataset.scenario;
+        this.soar.showNotification(`Switched Telemetry Scenario to: [${this.currentScenario}]`);
+      });
+    });
+  }
+
+  async telemetryTick() {
+    let throughput = 0;
+    let threats = this.activeAlerts.length;
+
+    try {
+      const res = await fetch('/api/system-telemetry');
+      if (res.ok) {
+        const data = await res.json();
+        throughput = data.throughput_kbps;
+      }
+    } catch(e) {
+      // Fallback
+    }
+
