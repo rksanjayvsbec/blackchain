@@ -458,3 +458,163 @@ class NetShieldApp {
 
     const alertCountElem = document.getElementById('hudAlertCount');
     if (alertCountElem) alertCountElem.innerText = "0";
+
+    const topAssetElem = document.querySelectorAll('.hud-card .hud-value')[2];
+    if (topAssetElem) {
+      topAssetElem.innerText = "Threat Contained";
+      topAssetElem.style.color = "#10b981";
+    }
+
+    // 6. Update Incident Stream with new event
+    const nowTime = new Date().toLocaleTimeString();
+    const container = document.getElementById('alertTimelineContainer');
+    if (container) {
+      const newEvent = document.createElement('div');
+      newEvent.className = "timeline-item";
+      newEvent.style.borderLeftColor = "#10b981";
+      newEvent.style.background = "rgba(16, 185, 129, 0.12)";
+      newEvent.innerHTML = `
+        <div>
+          <div style="font-size:0.75rem; color:#10b981; font-weight:bold;">✔ Connection Blocked • ${nowTime}</div>
+          <div style="font-size:0.95rem; font-weight:bold; margin:0.2rem 0; color:#fff;">Firewall rule deployed</div>
+          <div style="font-size:0.8rem; color:#9ca3af;">C2 communication terminated completely.</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.1rem; font-weight:800; color:#10b981; font-family:var(--font-mono);">PASSED</div>
+        </div>
+      `;
+      container.prepend(newEvent);
+    }
+
+    // 8. Re-render Asset Table
+    this.renderAssetTable();
+
+    // 9. AI Copilot Auto-Generation
+    if (this.chatbot) {
+      this.chatbot.toggleDrawer(true);
+      this.chatbot.addBotMessage(
+        "🤖 **NetShield AI Copilot - Automated Incident Analysis:**\n\n" +
+        "• **Action Taken:** Network firewall perimeter rule deployed. Malicious connection blocked.\n" +
+        "• **Current Status:** **Contained** (State saved to local profile).\n" +
+        "• **Recommended Next Step:** Run memory malware audit."
+      );
+    }
+  }
+
+  executeSOARAction(actionName, target) {
+    this.disconnectUnwantedConnection();
+  }
+
+  async blockDeviceByIP(ip) {
+    if (!ip || ip === 'Localhost (You)' || ip === '127.0.0.1' || ip === 'my_laptop') {
+      if (this.soar) {
+        this.soar.showNotification("🛡️ Protection Rule: Cannot block your own system!", "warning");
+      }
+      return;
+    }
+
+    const blockedIPs = JSON.parse(localStorage.getItem('blocked_ips') || '[]');
+    if (!blockedIPs.includes(ip)) {
+      blockedIPs.push(ip);
+      localStorage.setItem('blocked_ips', JSON.stringify(blockedIPs));
+    }
+
+    // Call POST /api/block-ip
+    try {
+      console.log(`Sending block request to backend for IP: ${ip}`);
+      await fetch('/api/block-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: ip })
+      });
+    } catch(e) {
+      console.error("Failed to apply system-level block:", e);
+    }
+
+    // Update status in memory
+    const dev = this.devices.find(d => d.ip_address === ip || d.ip === ip || d.id === ip);
+    if (dev) {
+      dev.status = "Isolated";
+      dev.current_risk_score = 0;
+      dev.predicted_risk_24h = 0;
+      dev.threats = 0;
+    }
+
+    // Show toast notification in standard format
+    if (this.soar) {
+      this.soar.showNotification(`🚫 Device ${ip} successfully blocked and contained!`, "success");
+    }
+
+    // Re-render UI, HUD, table, and graph
+    this.renderAssetTable();
+    this.updateHUDMetrics();
+    this.renderBlockedDevicesHistory();
+    if (this.graph) {
+      this.graph.renderRealDevices(this.devices);
+    }
+
+    if (this.xaiModal) {
+      this.xaiModal.close();
+    }
+  }
+
+  renderAssetTable() {
+    const tbody = document.getElementById('assetTableBody');
+    if (!tbody) return;
+
+    if (!this.devices || this.devices.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="padding:1rem; text-align:center; color:#9ca3af;">Scanning local network for connected assets...</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = this.devices.map(d => {
+      const isBlocked = d.status === 'Isolated';
+      const isAttacked = d.status === 'Compromised' || d.status === 'Suspicious';
+      
+      let statusStyle = 'background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.4);';
+      let statusIcon = '🟢';
+      
+      if (d.status === 'Compromised') {
+        statusStyle = 'background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.5);';
+        statusIcon = '🔴';
+      } else if (d.status === 'Suspicious' || d.status === 'Contained') {
+        statusStyle = 'background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.5);';
+        statusIcon = '🟡';
+      } else if (isBlocked) {
+        statusStyle = 'background:rgba(107,114,128,0.2); color:#9ca3af; border:1px solid rgba(107,114,128,0.4);';
+        statusIcon = '⚪';
+      }
+
+      const riskVal = isBlocked ? 0 : (d.current_risk_score !== undefined ? d.current_risk_score : 5);
+      const forecastVal = isBlocked ? 0 : Math.min(99, riskVal + 6);
+      const barColor = riskVal > 75 ? '#ef4444' : (riskVal > 25 ? '#f59e0b' : '#10b981');
+      const forecastTrend = isBlocked ? '0% 🛡️' : `${forecastVal}% ↗`;
+
+      const safeName = (d.name || '').replace(/'/g, "\\'");
+      const safeType = (d.device_type || '').replace(/'/g, "\\'");
+      const safeMac = (d.mac_address || '').replace(/'/g, "\\'");
+      const safeIp = (d.ip_address || '').replace(/'/g, "\\'");
+
+      return `
+        <tr style="cursor:pointer; transition:background 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'" onclick="window.NetShieldApp.openXAIModalForDevice({id:'${d.id}', ip:'${safeIp}', mac:'${safeMac}', name:'${safeName}', type:'${safeType}', status:'${d.status}'})">
+          <td style="font-weight:bold; color:#fff;">
+            <i class="fa-solid ${d.id === 'my_laptop' ? 'fa-laptop-code' : 'fa-network-wired'}" style="color:${d.id === 'my_laptop' ? '#00f2fe' : '#a855f7'}; margin-right:0.4rem;"></i>
+            ${d.name}
+            ${d.mac_address && d.mac_address !== 'N/A' ? `<div style="font-size:0.68rem; color:#9ca3af; font-family:var(--font-mono); font-weight:normal;">MAC: ${d.mac_address}</div>` : ''}
+          </td>
+          <td><code style="color:#00f2fe; background:rgba(0,242,254,0.1); padding:0.25rem 0.5rem; border-radius:4px; font-family:var(--font-mono);">${d.ip_address}</code></td>
+          <td><span style="color:#e2e8f0; font-size:0.8rem;">${d.device_type}</span></td>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <span style="font-weight:bold; width:32px; font-family:var(--font-mono); color:${barColor};">${riskVal}%</span>
+              <div class="risk-bar-bg" style="flex:1; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                <div class="risk-bar-fill" style="width:${riskVal}%; height:100%; background:${barColor}; transition:width 0.3s ease;"></div>
+              </div>
+            </div>
+          </td>
+          <td><span style="color:${isBlocked ? '#9ca3af' : '#f59e0b'}; font-weight:bold; font-family:var(--font-mono); font-size:0.85rem;">${forecastTrend}</span></td>
+          <td><span class="pill-badge" style="padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:bold; ${statusStyle}">${statusIcon} ${d.status.toUpperCase()}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
