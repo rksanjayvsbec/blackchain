@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetShield AI – Intelligent Network Compromise Detection System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="logo-brand">
+      <div class="logo-icon">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <div>NetShield <span style="color:#00f2fe; font-weight:300;">AI</span></div>
+    </div>
+
+    <!-- Scenario Switcher -->
+    <div class="scenario-selector">
+      <span style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:bold; margin-right:0.35rem;">Telemetry Stream:</span>
+      <button class="scenario-btn active" data-scenario="SSH Brute Force">SSH Brute Force</button>
+      <button class="scenario-btn" data-scenario="DDoS Attack">DDoS Attack</button>
+      <button class="scenario-btn" data-scenario="Data Exfiltration">Data Exfiltration</button>
+      <button class="scenario-btn" data-scenario="Normal Baseline">Normal Baseline</button>
+    </div>
+
+    <!-- Status Badges -->
+    <div class="status-pills">
+      <div class="pill-badge pill-red">
+        <div class="pulsing-dot"></div>
+        <span>COMPROMISE DETECTED</span>
+      </div>
+      <div class="pill-badge pill-green">
+        <i class="fa-solid fa-brain"></i>
+        <span>AI Copilot Active</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Container -->
+  <main class="dashboard-grid">
+
+    <!-- Top Metrics HUD -->
+    <div class="col-12 metrics-row">
+      <div class="glass-panel hud-card">
+        <div>
+          <div class="hud-title">SYSTEM THREAT STATUS</div>
+          <div class="hud-value" style="color:#ef4444;">CRITICAL</div>
+        </div>
+        <div class="hud-icon" style="background:rgba(239,68,68,0.15); color:#ef4444;">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+      </div>
+
+      <div class="glass-panel hud-card">
+        <div>
+          <div class="hud-title">PACKET THROUGHPUT</div>
+          <div class="hud-value" id="hudPackets" style="color:#00f2fe;">3,420 pkts/s</div>
+        </div>
+        <div class="hud-icon" style="background:rgba(0,242,254,0.15); color:#00f2fe;">
+          <i class="fa-solid fa-network-wired"></i>
+        </div>
+      </div>
+
+      <div class="glass-panel hud-card">
+        <div>
+          <div class="hud-title">TOP HIGH-RISK ASSET</div>
+          <div class="hud-value" style="color:#f59e0b; font-size:1.35rem;">Web Server-02</div>
+        </div>
+        <div class="hud-icon" style="background:rgba(245,158,11,0.15); color:#f59e0b;">
+          <i class="fa-solid fa-server"></i>
+        </div>
+      </div>
+
+      <div class="glass-panel hud-card">
+        <div>
+          <div class="hud-title">ACTIVE THREAT ALERTS</div>
+          <div class="hud-value" id="hudAlertCount" style="color:#a855f7;">1</div>
+        </div>
+        <div class="hud-icon" style="background:rgba(168,85,247,0.15); color:#a855f7;">
+          <i class="fa-solid fa-bell"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 1: Network Attack Graph (Left 8 Cols) -->
+    <div class="col-8 glass-panel" style="padding:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div>
+          <h3 style="font-size:1.1rem; font-weight:700;"><i class="fa-solid fa-diagram-project" style="color:#00f2fe; margin-right:0.5rem;"></i> Network Attack Graph & Lateral Movement</h3>
+          <p style="font-size:0.8rem; color:#9ca3af;">Visualizing compromise vectors across devices (🟢 Safe, 🟠 Suspicious / Contained, 🔴 Compromised, ⚪ Isolated)</p>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+          <button onclick="window.NetShieldApp.disconnectUnwantedConnection()" style="font-size:0.75rem; color:#fff; background:linear-gradient(135deg, #ef4444, #dc2626); padding:0.35rem 0.75rem; border-radius:6px; border:none; font-weight:bold; cursor:pointer; box-shadow:0 0 10px rgba(239,68,68,0.4);">
+            🔌 Disconnect Unwanted Connection
+          </button>
+          <span style="font-size:0.75rem; color:#00f2fe; background:rgba(0,242,254,0.1); padding:0.35rem 0.65rem; border-radius:6px; border:1px solid rgba(0,242,254,0.3);">
+            Click Node to Inspect XAI
+          </span>
+        </div>
+      </div>
+
+      <!-- SVG Attack Graph -->
+      <div class="graph-container">
+        <svg id="attackGraphSvg"></svg>
+      </div>
+    </div>
+
+    <!-- Section 2: Alert Timeline Stream (Right 4 Cols) -->
+    <div class="col-4 glass-panel" style="padding:1.5rem;">
+      <div style="margin-bottom:1rem;">
+        <h3 style="font-size:1.1rem; font-weight:700;"><i class="fa-solid fa-bolt" style="color:#ef4444; margin-right:0.5rem;"></i> Real-Time Incident Stream</h3>
+        <p style="font-size:0.8rem; color:#9ca3af;">Parsed from Syslog, Zeek, Suricata & Windows Security Events</p>
+      </div>
+
+      <div class="timeline-list" id="alertTimelineContainer">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Section 3: Live Telemetry Canvas & ML Performance (Left 6 Cols) -->
+    <div class="col-6 glass-panel" style="padding:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div>
+          <h3 style="font-size:1.1rem; font-weight:700;"><i class="fa-solid fa-chart-line" style="color:#10b981; margin-right:0.5rem;"></i> Live Traffic Throughput & Anomaly Pulses</h3>
+          <p style="font-size:0.8rem; color:#9ca3af;">Real-time byte rate with red anomaly overlay markers</p>
+        </div>
+      </div>
+      <div style="height:200px; width:100%;">
+        <canvas id="telemetryCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Section 4: Dataset Benchmarks Sandbox (Right 6 Cols) -->
+    <div class="col-6 glass-panel" style="padding:1.5rem;">
+      <div style="margin-bottom:1rem;">
+        <h3 style="font-size:1.1rem; font-weight:700;"><i class="fa-solid fa-database" style="color:#a855f7; margin-right:0.5rem;"></i> AI Benchmark Datasets Evaluation</h3>
+        <p style="font-size:0.8rem; color:#9ca3af;">Trained Random Forest, Isolation Forest & Autoencoder Metrics</p>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; text-align:center;">
+        <div style="background:rgba(15,23,42,0.6); padding:0.85rem; border-radius:8px; border:1px solid var(--border-color);">
+          <div style="font-size:0.75rem; color:#9ca3af;">CIC-IDS2017</div>
+          <div style="font-size:1.35rem; font-weight:bold; color:#10b981; font-family:var(--font-mono);">99.82%</div>
+          <div style="font-size:0.7rem; color:#00f2fe;">Acc (RandomForest)</div>
+        </div>
+        <div style="background:rgba(15,23,42,0.6); padding:0.85rem; border-radius:8px; border:1px solid var(--border-color);">
+          <div style="font-size:0.75rem; color:#9ca3af;">UNSW-NB15</div>
+          <div style="font-size:1.35rem; font-weight:bold; color:#00f2fe; font-family:var(--font-mono);">98.45%</div>
+          <div style="font-size:0.7rem; color:#00f2fe;">Acc (IsolationForest)</div>
+        </div>
+        <div style="background:rgba(15,23,42,0.6); padding:0.85rem; border-radius:8px; border:1px solid var(--border-color);">
+          <div style="font-size:0.75rem; color:#9ca3af;">TON_IoT</div>
+          <div style="font-size:1.35rem; font-weight:bold; color:#a855f7; font-family:var(--font-mono);">99.10%</div>
+          <div style="font-size:0.7rem; color:#00f2fe;">Acc (Autoencoder)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5: Monitored Asset Health & 24h Risk Scoreboard (Left 8 Cols) -->
+    <div class="col-8 glass-panel" style="padding:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div>
+          <h3 style="font-size:1.1rem; font-weight:700;"><i class="fa-solid fa-microchip" style="color:#f59e0b; margin-right:0.5rem;"></i> Asset Risk Scoreboard & 🔮 24-Hour Threat Prediction</h3>
+          <p style="font-size:0.8rem; color:#9ca3af;">Evaluates device criticality, active anomaly indicators, and predictive velocity</p>
+        </div>
+      </div>
+
+      <table class="asset-table">
+        <thead>
+          <tr>
+            <th>Device Name</th>
+            <th>IP Address</th>
+            <th>Type</th>
+            <th>Current Risk</th>
+            <th>24h Forecast</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="assetTableBody">
+          <!-- Rendered by JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 6: SOAR Automated Response Console (Right 4 Cols) -->
+    <div class="col-4 glass-panel" style="padding:1.5rem;">
+      <div style="margin-bottom:1rem;">
+        <h3 style="font-size:1.1rem; font-weight:700;"><i class="fa-solid fa-gears" style="color:#10b981; margin-right:0.5rem;"></i> SOAR Response Console</h3>
+        <p style="font-size:0.8rem; color:#9ca3af;">One-click automated containment & remediation</p>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.65rem; margin-bottom:1rem;">
+        <button onclick="window.NetShieldApp.executeSOARAction('Block IP', '185.220.101.5')" style="background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444; padding:0.65rem; border-radius:6px; font-weight:bold; cursor:pointer; text-align:left;">
+          🚫 Block Malicious IP 185.220.101.5
+        </button>
+        <button onclick="window.NetShieldApp.executeSOARAction('Isolate Host', 'Web Server-02')" style="background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#f59e0b; padding:0.65rem; border-radius:6px; font-weight:bold; cursor:pointer; text-align:left;">
+          ⚡ Isolate Web Server-02 (VLAN 999)
+        </button>
+        <button onclick="window.NetShieldApp.generateReport('Web Server-02', '10.0.0.5')" style="background:rgba(0,242,254,0.2); border:1px solid #00f2fe; color:#00f2fe; padding:0.65rem; border-radius:6px; font-weight:bold; cursor:pointer; text-align:left;">
+          📑 Export Formal Incident Report (.md)
+        </button>
+      </div>
+
+      <div style="font-size:0.75rem; color:#9ca3af; margin-bottom:0.35rem;">PLAYBOOK AUDIT LOG:</div>
+      <div id="soarActionList" style="max-height:120px; overflow-y:auto; background:rgba(8,11,17,0.6); border:1px solid var(--border-color); border-radius:6px; padding:0.5rem;">
+        <div style="font-size:0.75rem; color:#10b981;">✓ 13:01:10 - Executed Block IP on 185.220.101.5</div>
+      </div>
+    </div>
+
+    <!-- Section 7: Active TCP/UDP Socket Connections Inspector (Full 12 Cols) -->
+    <div class="col-12 glass-panel" style="padding:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div>
+          <h3 style="font-size:1.1rem; font-weight:700;"><i class="fa-solid fa-network-wired" style="color:#00f2fe; margin-right:0.5rem;"></i> Active Socket & Connection Inspector</h3>
+          <p style="font-size:0.8rem; color:#9ca3af;">Live active network socket connections across all monitored endpoints</p>
+        </div>
+        <span style="font-size:0.75rem; color:#10b981; background:rgba(16,185,129,0.1); padding:0.25rem 0.65rem; border-radius:4px; border:1px solid rgba(16,185,129,0.3);">
+          5 Active Sockets Monitored
+        </span>
+      </div>
+
+      <table class="asset-table">
+        <thead>
+          <tr>
+            <th>Protocol</th>
+            <th>Local Endpoint</th>
+            <th>Remote Endpoint</th>
+            <th>State</th>
+            <th>PID / Process</th>
+            <th>Data Stream Volume</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="socketTableBody">
+          <tr>
+            <td><span style="color:#00f2fe; font-weight:bold;">TCP</span></td>
+            <td><code>10.0.0.5:22</code></td>
+            <td><code style="color:#ef4444;">185.220.101.5:51204</code></td>
+            <td><span style="color:#ef4444; font-weight:bold;">ESTABLISHED (ATTACK)</span></td>
+            <td><code>sshd [PID: 4912]</code></td>
+            <td>2.3 GB (High Volume)</td>
+            <td><button onclick="window.NetShieldApp.executeSOARAction('Kill Process', '4912')" style="background:#ef4444; color:#fff; border:none; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:bold; cursor:pointer;">Kill PID 4912</button></td>
+          </tr>
+          <tr>
+            <td><span style="color:#00f2fe; font-weight:bold;">TCP</span></td>
+            <td><code>10.0.0.5:80</code></td>
+            <td><code>192.168.1.1:49152</code></td>
+            <td><span style="color:#10b981;">ESTABLISHED</span></td>
+            <td><code>nginx [PID: 1042]</code></td>
+            <td>1.4 MB</td>
+            <td><span style="color:#9ca3af; font-size:0.75rem;">Normal</span></td>
+          </tr>
+          <tr>
+            <td><span style="color:#00f2fe; font-weight:bold;">TCP</span></td>
+            <td><code>10.0.0.12:3306</code></td>
+            <td><code style="color:#f59e0b;">10.0.0.5:54321</code></td>
+            <td><span style="color:#f59e0b; font-weight:bold;">SYN_SENT (PROBE)</span></td>
+            <td><code>mysqld [PID: 2840]</code></td>
+            <td>45 KB</td>
+            <td><button onclick="window.NetShieldApp.executeSOARAction('Isolate Host', 'Production DB-01')" style="background:#f59e0b; color:#000; border:none; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:bold; cursor:pointer;">Sever Connection</button></td>
+          </tr>
+          <tr>
+            <td><span style="color:#a855f7; font-weight:bold;">UDP</span></td>
+            <td><code>192.168.1.45:53</code></td>
+            <td><code>192.168.1.1:53</code></td>
+            <td><span style="color:#10b981;">ACTIVE</span></td>
+            <td><code>systemd-resolved</code></td>
+            <td>12 KB</td>
+            <td><span style="color:#9ca3af; font-size:0.75rem;">Normal</span></td>
+          </tr>
+          <tr>
+            <td><span style="color:#10b981; font-weight:bold;">RTSP</span></td>
+            <td><code>192.168.1.88:554</code></td>
+            <td><code>192.168.1.1:52100</code></td>
+            <td><span style="color:#10b981;">STREAMING</span></td>
+            <td><code>camera_rtsp [PID: 812]</code></td>
+            <td>450 MB</td>
+            <td><span style="color:#9ca3af; font-size:0.75rem;">Normal</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- XAI Investigation Modal Overlay -->
+  <div class="modal-overlay" id="xaiModalOverlay">
+    <div class="glass-panel modal-content" style="position:relative;">
+      <button id="xaiModalClose" style="position:absolute; top:1.25rem; right:1.25rem; background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">&times;</button>
+      <div id="xaiModalBody">
+        <!-- Rendered by XAIModalController -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 💬 Floating AI Security Copilot Chat Widget -->
+  <button class="chat-widget-btn" id="chatWidgetBtn" title="Ask NetShield AI Copilot">
+    <i class="fa-solid fa-robot"></i>
+  </button>
+
+  <div class="glass-panel chat-drawer" id="chatDrawer">
+    <div class="chat-header">
+      <div style="display:flex; align-items:center; gap:0.5rem; font-weight:bold; color:#00f2fe;">
+        <i class="fa-solid fa-brain"></i> Ask NetShield AI Copilot
+      </div>
+      <button id="closeChatBtn" style="background:none; border:none; color:#9ca3af; font-size:1.2rem; cursor:pointer;">&times;</button>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <!-- Messages appended by SecurityCopilotChatbot -->
+    </div>
+
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Why is Server-02 compromised?">
+      <button class="chat-send-btn" id="chatSendBtn">Ask</button>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="../js/charts.js?v=3"></script>
+  <script src="../js/attack_graph.js?v=3"></script>
+  <script src="../js/xai_modal.js?v=3"></script>
+  <script src="../js/soar_ui.js?v=3"></script>
+  <script src="../js/chatbot.js?v=3"></script>
+  <script src="../js/app.js?v=3"></script>
+</body>
+</html>
