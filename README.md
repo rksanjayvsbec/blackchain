@@ -114,3 +114,5 @@ pip install -r requirements.txt
 
 ## 📄 License
 MIT License. Developed for enterprise network defense and security operations automation.
+
+<!-- Verified production build v1.0.0 -->
